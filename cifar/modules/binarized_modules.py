@@ -12,10 +12,13 @@ writer = SummaryWriter(r'../runs')
 
 class BinarizeConv2d(nn.Conv2d):
 
+    BinarizeConv2d_count = 0
+
     def __init__(self, *kargs, **kwargs):
         super(BinarizeConv2d, self).__init__(*kargs, **kwargs)
         self.k = torch.tensor([10.]).float()
         self.t = torch.tensor([0.1]).float()
+        BinarizeConv2d.BinarizeConv2d_count +=1
         
         #TODO
         self.cosine_similarity = nn.Parameter(torch.Tensor([1.]).float().cuda(), requires_grad = False)
@@ -66,7 +69,8 @@ class BinarizeConv2d(nn.Conv2d):
         #* binarize
         bw = BinaryQuantize().apply(w3, self.k.to(w.device), self.t.to(w.device))
         self.cosine_similarity = torch.dot(bw,w)/(torch.norm(bw)*torch.norm(w))
-        writer.add_scalar('../runs/cosine_similarity', self.cosine_similarity.item(), self.epoch)
+        writer.add_scalar('../runs/layer%d/cosine_similarity' %self.BinarizeConv2d_count, self.cosine_similarity.item(), self.epoch)
+        writer.add_scalar('../runs/layer%d/Adjustable_Rotated_Weight_Vector' %self.BinarizeConv2d_count, torch.abs(torch.sin(self.rotate)).item(), self.epoch)
 
         if args.a32:
             ba = a2

@@ -205,7 +205,7 @@ def main():
         # evaluate 
         with torch.no_grad():
             for module in conv_modules:
-                module.epoch = -1
+                module.epoch = -1 #TODO
             val_loss, val_prec1, val_prec5 = validate(
                 val_loader, model, criterion, epoch)
 
@@ -217,7 +217,7 @@ def main():
             best_loss = val_loss
 
         # save model
-        if epoch % 1 == 0:
+        if epoch % 1 == 0: #TODO ?????????????????
             model_state_dict = model.module.state_dict() if len(args.gpus) > 1 else model.state_dict()
             model_parameters = model.module.parameters() if len(args.gpus) > 1 else model.parameters()
             save_checkpoint({
