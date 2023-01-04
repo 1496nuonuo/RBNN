@@ -7,8 +7,9 @@ from torch.autograd import Function, Variable
 from scipy.stats import ortho_group
 from utils.options import args
 
-from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter(r'../runs')
+
+
+
 
 class BinarizeConv2d(nn.Conv2d):
 
@@ -19,11 +20,12 @@ class BinarizeConv2d(nn.Conv2d):
         self.k = torch.tensor([10.]).float()
         self.t = torch.tensor([0.1]).float()
         BinarizeConv2d.BinarizeConv2d_count +=1
+        self.ind = BinarizeConv2d.BinarizeConv2d_count
         
         #TODO
-        self.cosine_similarity = nn.Parameter(torch.Tensor([1.]).float().cuda(), requires_grad = False)
+        self.cosine_similarity = torch.Tensor([1.]).float().cuda()
         # self.cosine_similarity.data.fill_(1)
-
+        
 
         self.epoch = -1
 
@@ -68,9 +70,10 @@ class BinarizeConv2d(nn.Conv2d):
 
         #* binarize
         bw = BinaryQuantize().apply(w3, self.k.to(w.device), self.t.to(w.device))
-        self.cosine_similarity = torch.dot(bw,w)/(torch.norm(bw)*torch.norm(w))
-        writer.add_scalar('../runs/layer%d/cosine_similarity' %self.BinarizeConv2d_count, self.cosine_similarity.item(), self.epoch)
-        writer.add_scalar('../runs/layer%d/Adjustable_Rotated_Weight_Vector' %self.BinarizeConv2d_count, torch.abs(torch.sin(self.rotate)).item(), self.epoch)
+        self.cosine_similarity = torch.sum(torch.mul(bw,w))/(torch.norm(bw)*torch.norm(w))
+        # if self.BinarizeConv2d_count == 1:
+        #     self.writer.add_scalar('/output/logs/cosine_similarity' , self.cosine_similarity.item(), self.epoch)
+        #     self.writer.add_scalar('/output/logs/rotate' , torch.abs(torch.sin(self.rotate)[0]).detach().item(), self.epoch)
 
         if args.a32:
             ba = a2
