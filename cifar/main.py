@@ -15,7 +15,9 @@ from utils.common import *
 from modules import *
 from datetime import datetime 
 import dataset
+from torch.utils.tensorboard import SummaryWriter
 
+writer = SummaryWriter('/output/logs')
 
 def main():
     global args, best_prec1, conv_modules
@@ -192,12 +194,16 @@ def main():
             if isinstance(module,nn.Conv2d):
                 module.k = k.cuda()
                 module.t = t.cuda()
+            # if isinstance(module,BinarizeConv2d):
+            #     writer.add_scalar('/output/logs/cosine_similarity%d' %module.ind , module.cosine_similarity.item(), epoch)
+            #     writer.add_scalar('/output/logs/rotate%d'%module.ind , torch.abs(torch.sin(module.rotate)[0]).detach().item(), epoch)
+                
         for module in conv_modules:
             module.epoch = epoch
         # train
         train_loss, train_prec1, train_prec5 = train(
             train_loader, model, criterion, epoch, optimizer)
-
+        
         #* adjust Lr
         if epoch >= 4 * args.warm_up:
             lr_scheduler.step()
@@ -229,9 +235,9 @@ def main():
             }, is_best, path=save_path)
 
         if args.time_estimate > 0 and epoch % args.time_estimate==0:
-           time_end = datetime.now()
-           cost_time,finish_time = get_time(time_end-time_start,epoch,args.epochs)
-           logging.info('Time cost: '+cost_time+'\t'
+            time_end = datetime.now()
+            cost_time,finish_time = get_time(time_end-time_start,epoch,args.epochs)
+            logging.info('Time cost: '+cost_time+'\t'
                         'Time of Finish: '+finish_time)
 
         logging.info('\n Epoch: {0}\t'
@@ -274,6 +280,7 @@ def forward(data_loader, model, criterion, epoch=0, training=True, optimizer=Non
         
         # compute output
         output = model(input_var)
+        
         loss = criterion(output, target_var)
 
         if type(output) is list:
@@ -290,7 +297,12 @@ def forward(data_loader, model, criterion, epoch=0, training=True, optimizer=Non
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
+        for name,module in model.named_modules():
+            if isinstance(module,BinarizeConv2d):
+                writer.add_scalar('/output/logs/cosine_similarity%d' %module.ind , module.cosine_similarity.item(), epoch)
+                writer.add_scalar('/output/logs/rotate%d'%module.ind , torch.abs(torch.sin(module.rotate)[0]).detach().item(), epoch)
+                writer.add_scalar('/output/logs/cosine_similarity_together' , module.cosine_similarity.item(), module.ind)
+                writer.add_scalar('/output/logs/rotate_together', torch.abs(torch.sin(module.rotate)[0]).detach().item(), module.ind)
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
